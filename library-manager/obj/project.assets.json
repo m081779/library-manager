@@ -12688,9 +12688,9 @@
       "hideWarningsAndErrors": true
     },
     "restore": {
-      "projectUniqueName": "C:\\Users\\marco\\Desktop\\code\\c#\\library-manager\\library-manager\\library-manager.csproj",
-      "projectName": "library-manager",
-      "projectPath": "C:\\Users\\marco\\Desktop\\code\\c#\\library-manager\\library-manager\\library-manager.csproj",
+      "projectUniqueName": "C:\\Users\\marco\\Desktop\\code\\c#\\library-manager\\library-manager\\LibraryManager.csproj",
+      "projectName": "LibraryManager",
+      "projectPath": "C:\\Users\\marco\\Desktop\\code\\c#\\library-manager\\library-manager\\LibraryManager.csproj",
       "packagesPath": "C:\\Users\\marco\\.nuget\\packages\\",
       "outputPath": "C:\\Users\\marco\\Desktop\\code\\c#\\library-manager\\library-manager\\obj\\",
       "projectStyle": "PackageReference",
