@@ -10,7 +10,7 @@ namespace LibraryServices
 {
     public class CheckoutService : ICheckout
     {
-        private LibraryContext _context;
+        private readonly LibraryContext _context;
 
         public CheckoutService(LibraryContext context)
         {
@@ -25,12 +25,92 @@ namespace LibraryServices
 
         public void CheckInItem(int assetId, int LibraryCardId)
         {
-            throw new NotImplementedException();
+            var now = DateTime.Now;
+            var item = _context.LibraryAssets
+                .FirstOrDefault(a => a.Id == assetId);
+            // remove any existing checkouts on the item
+            RemoveExistingCheckouts(assetId);
+
+            // close any existing checkout history
+            CloseExistingCheckoutHistory(assetId, now);
+
+            // look for existing holds on the item
+            var currentHolds = _context.Holds
+                .Include(h => h.LibraryAsset)
+                .Include(h => h.LibraryCard)
+                .Where(h => h.LibraryAsset.Id == assetId);
+                // if there are holds checkout the item to the librarycard with the earliest hold
+            if (currentHolds.Any())
+            {
+                CheckoutToEarliestHold(assetId, currentHolds);
+            }
+            // otherwise update hte item status to available
+            UpdateAssetStatus(assetId, "Available");
+
+            _context.SaveChanges();
+        }
+
+        private void CheckoutToEarliestHold(int assetId, IQueryable<Hold> currentHolds)
+        {
+            var earliestHold = currentHolds
+                .OrderBy(holds => holds.HoldPlaced)
+                .FirstOrDefault();
+
+            var card = earliestHold.LibraryCard;
+            _context.Remove(earliestHold);
+            _context.SaveChanges();
+            CheckOutItem(assetId, card.Id);
         }
 
         public void CheckOutItem(int assetId, int LibraryCardId)
         {
-            throw new NotImplementedException();
+            if (IsCheckedOut(assetId))
+            {
+                return;
+                //add logic for feedback to user
+            }
+
+            var item = _context.LibraryAssets
+                .FirstOrDefault(a => a.Id == assetId);
+
+            UpdateAssetStatus(assetId, "Checked Out");
+
+            var libraryCard = _context.LibraryCards
+                .Include(card => card.Checkouts)
+                .FirstOrDefault(card => card.Id == LibraryCardId);
+
+            var now = DateTime.Now;
+            var checkout = new Checkout
+            {
+                LibraryAsset = item,
+                LibraryCard = libraryCard,
+                Since = now,
+                Until = GetDefaultCheckoutTime(now)
+            };
+
+            _context.Add(checkout);
+
+            var checkoutHistory = new CheckoutHistory
+            {
+                CheckedOut = now,
+                LibraryAsset = item,
+                LibraryCard = libraryCard
+            };
+
+            _context.Add(checkoutHistory);
+            _context.SaveChanges();
+        }
+
+        private DateTime GetDefaultCheckoutTime(DateTime now)
+        {
+            return now.AddDays(30);
+        }
+
+        private bool IsCheckedOut(int assetId)
+        {
+            return _context.Checkouts
+                .Where(co => co.LibraryAsset.Id == assetId)
+                .Any();
         }
 
         public IEnumerable<Checkout> GetAll()
@@ -48,7 +128,7 @@ namespace LibraryServices
             return _context.CheckoutHistories
                 .Include(h => h.LibraryAsset)
                 .Include(h => h.LibraryCard)
-                .Where( h => h.LibraryAsset.Id == id)
+                .Where(h => h.LibraryAsset.Id == id);
         }
 
         public string GetCurrentHoldPatronName(int id)
@@ -128,7 +208,26 @@ namespace LibraryServices
 
         public void PlaceHold(int assetId, int LibraryCardId)
         {
-            throw new NotImplementedException();
+            var now = DateTime.Now;
+            var asset = _context.LibraryAssets
+                .FirstOrDefault(a => a.Id == assetId);
+            var card = _context.LibraryCards
+                .FirstOrDefault(c => c.Id == LibraryCardId);
+
+            if (asset.Status.Name == "Available")
+            {
+                UpdateAssetStatus(assetId, "On Hold");
+            }
+
+            var hold = new Hold
+            {
+                HoldPlaced = now,
+                LibraryAsset = asset,
+                LibraryCard = card
+            };
+
+            _context.Add(hold);
+            _context.SaveChanges();
         }
     }
 }
